@@ -4,7 +4,7 @@ pipeline {
     environment {
         GIT_REPO_URL   = "https://github.com/dlacifuentes/Proyecto1.git"
         DOCKER_IMAGE   = "dlacifuentes/demo-python-app"
-        BUILD_TAG      = "${env.BRANCH_NAME}-${env.BUILD_NUMBER}"
+        BUILD_TAG      = "${env.BUILD_NUMBER}"
         CONTAINER_NAME = "api-pedidos"
         HOST           = "localhost"
     }
@@ -62,7 +62,11 @@ pipeline {
         stage('Despliegue') {
             steps {
                 echo "Desplegando la aplicación..."
-                bat 'docker run -d --name %CONTAINER_NAME% -p 5000:5000 %DOCKER_IMAGE%:%BUILD_TAG%'
+                bat '''
+                    docker stop %CONTAINER_NAME% 2>null || echo No habia contenedor corriendo
+                    docker rm %CONTAINER_NAME% 2>null || echo No habia contenedor para borrar
+                    docker run -d --name %CONTAINER_NAME% -p 5000:5000 %DOCKER_IMAGE%:%BUILD_TAG%
+                '''
                 echo "La API FastAPI debería estar disponible en http://%HOST%:5000"
             }
         }
