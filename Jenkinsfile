@@ -13,7 +13,7 @@ pipeline {
         stage('Checkout') {
             steps {
                 echo "Clonando el repositorio de GitHub..."
-                checkout scmGit(branches: [[name: '*/main']], extensions: [], userRemoteConfigs: [[credentialsId: 'github-token', url: $GIT_REPO_URL ]])
+                checkout scmGit(branches: [[name: '*/feature/demo']], extensions: [], userRemoteConfigs: [[credentialsId: 'github-token', url: "${GIT_REPO_URL}" ]])
                 echo "Clonación finalizada"
             }
         }
@@ -21,8 +21,10 @@ pipeline {
         stage('Instalación de dependencias') {
             steps {
                 echo "Instalando dependencias..."
-                sh 'python --version'
-                sh 'pip install --no-cache-dir -r requirements.txt'
+                bat '''
+                    python --version
+                    pip install --no-cache-dir -r requirements.txt
+                '''
                 echo "Instalación de dependencias finalizada"
             }
         }
@@ -30,7 +32,7 @@ pipeline {
         stage('Ejecución Pruebas Unitarias') {
             steps {
                 echo "Ejecutando las pruebas unitarias..."
-                sh 'pytest -v'
+                bat 'pytest -v'
                 echo "Pruebas unitarias finalizadas con éxito"
             }
         }
@@ -38,10 +40,8 @@ pipeline {
         stage('Construcción Imagen Docker') {
             steps {
                 echo "Construyendo la imagen de la aplicación..."
-                IMAGE_TAG = "${BUILD_NUMBER}"
-
-                sh 'docker build -t $DOCKER_IMAGE:${IMAGE_TAG} .'
-                ech "Imagen de Docker creada"
+                bat "docker build -t %DOCKER_IMAGE%:%BUILD_TAG% ."
+                echo "Imagen de Docker creada"
             }
         }
 
@@ -49,8 +49,11 @@ pipeline {
             steps {
                 echo "Publicando la imagen en Docker Hub..."
                 withCredentials([usernamePassword(credentialsId: 'docker_hub_token', passwordVariable: 'DOCKER_PASS', usernameVariable: 'DOCKER_USER')]) {
-                    sh 'echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin'
-                    sh 'docker push $DOCKER_IMAGE:${IMAGE_TAG}'
+                    bat """
+                        echo Iniciando login en Docker Hub... 
+                        docker login -u %DOCKER_USER% -p %DOCKER_PASS%
+                        docker push %DOCKER_IMAGE%:%BUILD_TAG%
+                    """
                 }
                 echo "Imagen publicada correctamente"
             }
@@ -59,8 +62,8 @@ pipeline {
         stage('Despliegue') {
             steps {
                 echo "Desplegando la aplicación..."
-                sh 'docker run -d --name $CONTAINER_NAME -p 5000:5000 $DOCKER_IMAGE:${IMAGE_TAG}'
-                echo "La API FastAPI debería estar disponible en http://$HOST:5000"
+                bat 'docker run -d --name %CONTAINER_NAME% -p 5000:5000 %DOCKER_IMAGE%:%BUILD_TAG%'
+                echo "La API FastAPI debería estar disponible en http://%HOST%:5000"
             }
         }
     }
