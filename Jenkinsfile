@@ -1,30 +1,76 @@
 pipeline {
     agent any
+
+    environment {
+        GIT_REPO_URL   = "https://github.com/dlacifuentes/Proyecto1.git"
+        DOCKER_IMAGE   = "dlacifuentes/demo-python-app"
+        CONTAINER_NAME = "api-pedidos"
+        HOST           = "localhost"
+    }
+
     stages {
-        stage('Build') {
+        stage('Checkout') {
             steps {
-                echo 'Building...'
+                echo "Clonando el repositorio de GitHub..."
+                checkout scmGit(branches: [[name: '*/main']], extensions: [], userRemoteConfigs: [[credentialsId: 'github-token', url: $GIT_REPO_URL ]])
+                echo "Clonación finalizada"
             }
         }
-        stage('Test') {
+
+        stage('Instalación de dependencias') {
             steps {
-                echo 'Testing...'
+                echo "Instalando dependencias..."
+                sh 'python --version'
+                sh 'pip install --no-cache-dir -r requirements.txt'
+                echo "Instalación de dependencias finalizada"
             }
         }
-        stage('Scan') {
+
+        stage('Ejecución Pruebas Unitarias') {
             steps {
-                echo 'Scanning...'
+                echo "Ejecutando las pruebas unitarias..."
+                sh 'pytest -v'
+                echo "Pruebas unitarias finalizadas con éxito"
             }
         }
-        stage('Release') {
+
+        stage('Construcción Imagen Docker') {
             steps {
-                echo 'Creating artifact...'
+                echo "Construyendo la imagen de la aplicación"
+                sh 'docker build -t $DOCKER_IMAGE .'
+                ech "Imagen de Dcoker creada"
             }
-        }        
-        stage('Deploy') {
+        }
+
+        stage('Publicar Imagen Docker') {
             steps {
-                echo 'Deploying...'
+                echo "Publicando la imagen en Docker Hub..."
+                withCredentials([usernamePassword(credentialsId: 'docker_hub_token', passwordVariable: 'DOCKER_PASS', usernameVariable: 'DOCKER_USER')]) {
+                    sh 'echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin'
+                    sh 'docker push $DOCKER_IMAGE'
+                }
+                echo "Imagen publicada correctamente"
             }
+        }
+
+        stage('Despliegue') {
+            steps {
+                echo "Desplegando la aplicación..."
+                sh 'docker run -d --name $CONTAINER_NAME -p 5000:5000 $DOCKER_IMAGE'
+                echo "La API FastAPI debería estar disponible en http://$HOST:5000"
+            }
+        }
+    }
+
+    post {
+        success {
+            echo 'Pipeline ejecutado con éxito'
+            /*mail to: 'devteam@empresa.com',
+                 subject: "CI/CD pipeline ejecutado con exitoso: ${env.JOB_NAME}",
+                 body: "El pipeline ${env.BUILD_NUMBER} finalizó correctamente." */
+        }
+        failure {
+            echo 'Error en la ejecución del pipeline'
         }
     }
 }
