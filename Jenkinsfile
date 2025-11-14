@@ -4,6 +4,7 @@ pipeline {
     environment {
         GIT_REPO_URL   = "https://github.com/dlacifuentes/Proyecto1.git"
         DOCKER_IMAGE   = "dlacifuentes/demo-python-app"
+        BUILD_TAG      = "${env.BRANCH_NAME}-${env.BUILD_NUMBER}"
         CONTAINER_NAME = "api-pedidos"
         HOST           = "localhost"
     }
@@ -36,9 +37,11 @@ pipeline {
 
         stage('Construcción Imagen Docker') {
             steps {
-                echo "Construyendo la imagen de la aplicación"
-                sh 'docker build -t $DOCKER_IMAGE .'
-                ech "Imagen de Dcoker creada"
+                echo "Construyendo la imagen de la aplicación..."
+                IMAGE_TAG = "${BUILD_NUMBER}"
+
+                sh 'docker build -t $DOCKER_IMAGE:${IMAGE_TAG} .'
+                ech "Imagen de Docker creada"
             }
         }
 
@@ -47,7 +50,7 @@ pipeline {
                 echo "Publicando la imagen en Docker Hub..."
                 withCredentials([usernamePassword(credentialsId: 'docker_hub_token', passwordVariable: 'DOCKER_PASS', usernameVariable: 'DOCKER_USER')]) {
                     sh 'echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin'
-                    sh 'docker push $DOCKER_IMAGE'
+                    sh 'docker push $DOCKER_IMAGE:${IMAGE_TAG}'
                 }
                 echo "Imagen publicada correctamente"
             }
@@ -56,7 +59,7 @@ pipeline {
         stage('Despliegue') {
             steps {
                 echo "Desplegando la aplicación..."
-                sh 'docker run -d --name $CONTAINER_NAME -p 5000:5000 $DOCKER_IMAGE'
+                sh 'docker run -d --name $CONTAINER_NAME -p 5000:5000 $DOCKER_IMAGE:${IMAGE_TAG}'
                 echo "La API FastAPI debería estar disponible en http://$HOST:5000"
             }
         }
