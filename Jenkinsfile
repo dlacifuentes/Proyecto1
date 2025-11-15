@@ -6,14 +6,13 @@ pipeline {
         DOCKER_IMAGE   = "dlacifuentes/demo-python-app"
         BUILD_TAG      = "${env.BUILD_NUMBER}"
         CONTAINER_NAME = "api-pedidos"
-        HOST           = "localhost"
     }
 
     stages {
         stage('Checkout') {
             steps {
                 echo "Clonando el repositorio de GitHub..."
-                checkout scmGit(branches: [[name: '*/feature/demo']], extensions: [], userRemoteConfigs: [[credentialsId: 'github-token', url: "${GIT_REPO_URL}" ]])
+                checkout scmGit(branches: [[name: '*/main']], extensions: [], userRemoteConfigs: [[credentialsId: 'github-token', url: "${GIT_REPO_URL}" ]])
                 echo "Clonación finalizada"
             }
         }
@@ -67,7 +66,7 @@ pipeline {
                     docker rm %CONTAINER_NAME% 2>null || echo No habia contenedor para borrar
                     docker run -d --name %CONTAINER_NAME% -p 5000:5000 %DOCKER_IMAGE%:%BUILD_TAG%
                 '''
-                echo "La API FastAPI debería estar disponible en http://%HOST%:5000"
+                echo "La API FastAPI debería estar disponible en http://localhost:5000"
             }
         }
     }
@@ -75,12 +74,30 @@ pipeline {
     post {
         success {
             echo 'Pipeline ejecutado con éxito'
-            /*mail to: 'devteam@empresa.com',
-                 subject: "CI/CD pipeline ejecutado con exitoso: ${env.JOB_NAME}",
-                 body: "El pipeline ${env.BUILD_NUMBER} finalizó correctamente." */
+            emailext (
+                subject: "Build OK: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                body: """
+                    <h2>Build ejecutado con éxito</h2>
+                    <p>El job <b>${env.JOB_NAME}</b> completó exitosamente.</p>
+                    <p>Build #: ${env.BUILD_NUMBER}</p>
+                    <p>Ver consola: ${env.BUILD_URL}console</p>
+                """,
+                to: "dla.cifuentes98@gmail.com",
+                mimeType: 'text/html'
+            )
         }
         failure {
             echo 'Error en la ejecución del pipeline'
+            emailext (
+                subject: "Build FALLÓ: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                body: """
+                    <h2 style="color:red;">Build Fallida</h2>
+                    <p>Revisar detalles en Jenkins:</p>
+                    <p><a href="${env.BUILD_URL}console">${env.BUILD_URL}console</a></p>
+                """,
+                to: "dla.cifuentes98@gmail.com",
+                 mimeType: 'text/html'
+            )
         }
     }
 }
