@@ -8,6 +8,14 @@ pipeline {
         CONTAINER_NAME = "api-pedidos"
     }
 
+    parameters {
+        booleanParam(
+            name: 'DESPLIEGUE',
+            defaultValue: false,
+            description: 'Si está marcado, ejecuta también CD. Si no, solo CI'
+        )
+    }
+    
     stages {
         stage('Checkout') {
             steps {
@@ -37,6 +45,9 @@ pipeline {
         }
 
         stage('Construcción Imagen Docker') {
+            when {
+                expression { return params.DESPLIEGUE }
+            }
             steps {
                 echo "Construyendo la imagen de la aplicación..."
                 bat "docker build -t %DOCKER_IMAGE%:%BUILD_TAG% ."
@@ -45,6 +56,9 @@ pipeline {
         }
 
         stage('Publicar Imagen Docker') {
+            when {
+                expression { return params.DESPLIEGUE }
+            }
             steps {
                 echo "Publicando la imagen en Docker Hub..."
                 withCredentials([usernamePassword(credentialsId: 'docker_hub_token', passwordVariable: 'DOCKER_PASS', usernameVariable: 'DOCKER_USER')]) {
@@ -59,6 +73,9 @@ pipeline {
         }
 
         stage('Despliegue') {
+            when {
+                expression { return params.DESPLIEGUE }
+            }
             steps {
                 echo "Desplegando la aplicación..."
                 bat '''
