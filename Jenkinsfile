@@ -8,6 +8,10 @@ pipeline {
         CONTAINER_NAME = "api-pedidos"
     }
 
+    options {
+        skipDefaultCheckout(true)
+    }
+
     parameters {
         booleanParam(
             name: 'DESPLIEGUE',
