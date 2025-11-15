@@ -43,8 +43,37 @@ pipeline {
         stage('Ejecución Pruebas Unitarias') {
             steps {
                 echo "Ejecutando las pruebas unitarias..."
-                bat 'pytest -v'
+                bat 'pytest app/tests --asyncio-mode=auto --cov=app --cov-report=xml --cov-report=html'
                 echo "Pruebas unitarias finalizadas con éxito"
+            }
+            post {
+                success {
+                    echo "Las pruebas fueron exitosas. Publicando reporte HTML..."
+                    publishHTML(target: [
+                        reportDir: 'htmlcov',
+                        reportFiles: 'index.html',
+                        reportName: 'Coverage Report',
+                        keepAll: true,
+                        allowMissing: false,
+                        alwaysLinkToLastBuild: true
+                    ])
+                }
+                failure {
+                    echo "Las pruebas fallaron. No se genera reporte HTML."
+                }
+            }
+        }
+        
+        stage('SonarQube Analysis') {
+            steps {
+                script {
+                    def scannerHome = tool name: 'sonarscanner', type: 'hudson.plugins.sonar.SonarRunnerInstallation'
+                    withSonarQubeEnv('SonarQube') {
+                        bat """
+                            "${scannerHome}\\bin\\sonar-scanner.bat" -Dsonar.qualitygate.wait=true
+                        """
+                    }
+                }
             }
         }
 
