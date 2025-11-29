@@ -24,7 +24,7 @@ pipeline {
         stage('Checkout') {
             steps {
                 echo "Clonando el repositorio de GitHub..."
-                checkout scmGit(branches: [[name: '*/main']], extensions: [], userRemoteConfigs: [[credentialsId: 'github-token', url: "${GIT_REPO_URL}" ]])
+                checkout scmGit(branches: [[name: '*/develop']], extensions: [], userRemoteConfigs: [[credentialsId: 'github-token', url: "${GIT_REPO_URL}" ]])
                 echo "Clonación finalizada"
             }
         }
